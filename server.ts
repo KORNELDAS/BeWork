@@ -10,6 +10,12 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+if (!process.env.GEMINI_API_KEY) {
+  console.error("CRITICAL: GEMINI_API_KEY is not set. Please add it to your .env file or environment variables.");
+} else {
+  console.log("GEMINI_API_KEY found.");
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -46,6 +52,8 @@ app.post("/api/chat", async (req, res) => {
 
     const model = "gemini-3-flash-preview";
     
+    console.log(`Creating chat with model ${model}, history length: ${history?.length || 0}`);
+    
     // Create chat session with history
     const chat = ai.chats.create({
       model,
@@ -56,6 +64,7 @@ app.post("/api/chat", async (req, res) => {
     });
 
     const response = await chat.sendMessage({ message });
+    console.log("Gemini response received");
     res.json({ text: response.text });
 
   } catch (error: any) {
@@ -78,6 +87,8 @@ app.post("/api/chat/stream", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
 
     const model = "gemini-3-flash-preview";
+    console.log(`Streaming chat with model ${model}, history length: ${history?.length || 0}`);
+    
     const chat = ai.chats.create({
       model,
       config: {

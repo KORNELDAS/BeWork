@@ -154,7 +154,10 @@ export default function App() {
         }),
       });
 
-      if (!response.ok) throw new Error('Stream request failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server responded with ${response.status}`);
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -197,9 +200,9 @@ export default function App() {
         return s;
       }));
       setCurrentResponse('');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat Error:', error);
-      const errorMessage: Message = { role: 'model', parts: [{ text: 'I apologize, but I encountered an error processing your request.' }] };
+      const errorMessage: Message = { role: 'model', parts: [{ text: `I apologize, but I encountered an error: ${error.message}` }] };
       setSessions(prev => prev.map(s => s.id === targetSessionId ? { ...s, messages: [...s.messages, errorMessage] } : s));
     } finally {
       setIsLoading(false);
