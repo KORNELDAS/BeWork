@@ -1,0 +1,6 @@
+{
+  "name": "Bework",
+  "description": "A high-performance AI business partner for professional support, task management, and strategic assistance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
