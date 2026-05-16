@@ -52,18 +52,21 @@ app.post("/api/chat", async (req, res) => {
 
     const model = "gemini-3-flash-preview";
     
-    console.log(`Creating chat with model ${model}, history length: ${history?.length || 0}`);
+    console.log(`Generating content with model ${model}, history length: ${history?.length || 0}`);
     
-    // Create chat session with history
-    const chat = ai.chats.create({
+    const contents = [
+      ...(history || []),
+      { role: "user", parts: [{ text: message }] }
+    ];
+
+    const response = await ai.models.generateContent({
       model,
+      contents,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
       },
-      history: history || [],
     });
 
-    const response = await chat.sendMessage({ message });
     console.log("Gemini response received");
     res.json({ text: response.text });
 
@@ -87,19 +90,22 @@ app.post("/api/chat/stream", async (req, res) => {
     res.setHeader("Connection", "keep-alive");
 
     const model = "gemini-3-flash-preview";
-    console.log(`Streaming chat with model ${model}, history length: ${history?.length || 0}`);
+    console.log(`Streaming content with model ${model}, history length: ${history?.length || 0}`);
     
-    const chat = ai.chats.create({
+    const contents = [
+      ...(history || []),
+      { role: "user", parts: [{ text: message }] }
+    ];
+
+    const response = await ai.models.generateContentStream({
       model,
+      contents,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
       },
-      history: history || [],
     });
 
-    const result = await chat.sendMessageStream({ message });
-
-    for await (const chunk of result) {
+    for await (const chunk of response) {
       const text = chunk.text;
       if (text) {
         res.write(`data: ${JSON.stringify({ text })}\n\n`);
@@ -111,7 +117,7 @@ app.post("/api/chat/stream", async (req, res) => {
 
   } catch (error: any) {
     console.error("Gemini Stream Error:", error);
-    res.write(`data: ${JSON.stringify({ error: "Failed to stream response" })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: error.message || "Failed to stream response" })}\n\n`);
     res.end();
   }
 });

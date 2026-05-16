@@ -135,47 +135,51 @@ export default function App() {
     const messageToSend = customInput || input;
     if (!messageToSend.trim() || isLoading) return;
 
+    // Use current session or create one
     let targetSessionId = currentSessionId;
-    
-    // Auto-create session if none active
-    if (!targetSessionId) {
-      const newSession: ChatSession = {
-        id: crypto.randomUUID(),
-        title: messageToSend.slice(0, 40) + '...',
-        messages: [],
-        updatedAt: Date.now(),
-      };
-      setSessions(prev => [newSession, ...prev]);
-      setCurrentSessionId(newSession.id);
-      targetSessionId = newSession.id;
-    }
-
     const userMessage: Message = { role: 'user', parts: [{ text: messageToSend }] };
     
-    // Update local state immediately
-    setSessions(prev => prev.map(s => {
-      if (s.id === targetSessionId) {
-        return {
-          ...s,
-          messages: [...s.messages, userMessage],
-          updatedAt: Date.now(),
-          title: s.messages.length === 0 ? messageToSend.slice(0, 40) : s.title
-        };
-      }
-      return s;
-    }));
-
-    setInput('');
+    // Clear input immediately for better UX
+    if (!customInput) setInput('');
     setIsLoading(true);
     setCurrentResponse('');
 
+    // Update sessions state
+    setSessions(prev => {
+      let updatedSessions = [...prev];
+      let session = updatedSessions.find(s => s.id === targetSessionId);
+
+      if (!session) {
+        // Create new session if none exists
+        const newSession: ChatSession = {
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+          title: messageToSend.slice(0, 40) + (messageToSend.length > 40 ? '...' : ''),
+          messages: [userMessage],
+          updatedAt: Date.now(),
+        };
+        updatedSessions = [newSession, ...updatedSessions];
+        targetSessionId = newSession.id;
+        setCurrentSessionId(newSession.id);
+      } else {
+        // Update existing session
+        session.messages = [...session.messages, userMessage];
+        session.updatedAt = Date.now();
+        if (session.messages.length === 1) {
+          session.title = messageToSend.slice(0, 40) + (messageToSend.length > 40 ? '...' : '');
+        }
+      }
+      return updatedSessions;
+    });
+
     try {
+      const historyForApi = messages; //Captured at render time, correct for "everything before current"
+
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: messageToSend,
-          history: messages,
+          history: historyForApi,
         }),
       });
 
@@ -733,6 +737,7 @@ export default function App() {
                     />
                     <div className="absolute right-3 md:right-5 flex items-center gap-2 md:gap-3">
                       <button
+                        type="submit"
                         disabled={isLoading || !input.trim()}
                         className="group flex items-center justify-center gap-2 md:gap-3 h-12 md:h-16 px-6 md:px-10 bg-white hover:bg-white text-slate-900 hover:text-indigo-600 disabled:bg-slate-800 disabled:text-slate-600 rounded-[1.25rem] md:rounded-[2rem] transition-all shadow-3xl active:scale-95 disabled:scale-100 font-black text-[10px] md:text-sm uppercase tracking-[0.2em] relative overflow-hidden"
                       >
